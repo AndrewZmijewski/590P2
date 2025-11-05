@@ -27,6 +27,52 @@ let zang = 0;
 let rot = 0;
 let axisRotation = null;
 let rot_inc = 10;
+let axis_index = 0;
+let vertex_data = []
+
+let canvas_xz = null; 
+let canvas_yz = null;
+let canvas_xy = null; 
+let canvas_xyz = null;
+
+let xz_context = null; 
+let yz_context =null;
+let xy_context = null; 
+let xyz_context = null;
+
+let program_xz = null; 
+let program_yz = null;
+let program_xy = null; 
+let program_xyz = null;
+
+let attr_vertex_xy = null;
+let attr_vertex_yz = null;
+let attr_vertex_xz = null;
+let attr_vertex_xyz = null;
+
+let uniform_view_xy = null;
+let uniform_view_yz = null;
+let uniform_view_xz = null;
+let uniform_view_xyz = null;
+
+let uniform_props_xy = null;
+let uniform_props_yz = null;
+let uniform_props_xz = null;
+let uniform_props_xyz = null;
+
+let uniform_color_xy = null;
+let uniform_color_yz = null;
+let uniform_color_xz = null;
+let uniform_color_xyz = null;
+
+
+let at = vec3(0.0,0.0,0.0);
+let up = vec3(0.0,0.5,0.0);
+let eye = vec3(0.0,0.0,-0.5);
+let viewMatrix_xyz = lookAt( eye, at, up );
+let viewMatrix_xy = lookAt(vec3(0.5,0.0,0.0), vec3(0.0,0.0,0.0),vec3(0.0,1.0,0.0))
+let viewMatrix_yz = lookAt(vec3(0.0,0.0,-0.5), vec3(0.0,0.0,0.0),vec3(0.0,1.0,0.0))
+let viewMatrix_xz = lookAt(vec3(0.0,-0.5,0.0), vec3(0.0,0.0,0.0),vec3(0.0,0.0,1.0))
 
 function startRotation(rotationFunc) {
     if (axisRotation !== null) clearInterval(axisRotation);
@@ -84,9 +130,10 @@ function createData() {
     }
     for(let i = 0; i < Fpp.length; i++) {
         vertex_data[row++] = Vpp[Fpp[i][0]];
-        vertex_data[row++] = Vpp[Fpp[i][0]];
-        vertex_data[row++] = Vpp[Fpp[i][0]];
+        vertex_data[row++] = Vpp[Fpp[i][1]];
+        vertex_data[row++] = Vpp[Fpp[i][2]];
     }
+    axis_index = vertex_data.length;
     for(let i = 0; i < A.length; i++) {
         vertex_data[row++] = A[i];
     }
@@ -112,18 +159,51 @@ function configure() {
     program_xyz = initShaders( xyz_context, "vertex-shader", "fragment-shader" );
     
     xz_context.useProgram(program_xz);
-    yz_context.useProgram(program_yz);
-    xy_context.useProgram(program_xy);
-    xyz_context.useProgram(program_xyz);
-
     xz_context.viewport(0, 0, canvas_xz.width, canvas_xz.height);
+    xz_context.enable(xz_context.DEPTH_TEST);
+    attr_vertex_xz = xz_context.getAttribLocation(program_xz, "vertex");
+    uniform_props_xz = xz_context.getUniformLocation(program_xz, "props");
+    uniform_color_xz = xz_context.getUniformLocation(program_xz, "color");
+    uniform_view_xz = xz_context.getUniformLocation(program_xz, "View");
+    xz_context.useProgram(program_xz);
+    xz_context.uniformMatrix4fv(uniform_view_xz, false, flatten(viewMatrix_xz));
+
+
+    yz_context.useProgram(program_yz);
     yz_context.viewport(0, 0, canvas_yz.width, canvas_yz.height);
+    yz_context.enable(yz_context.DEPTH_TEST);
+    attr_vertex_yz = yz_context.getAttribLocation(program_yz, "vertex");
+    uniform_props_yz = yz_context.getUniformLocation(program_yz, "props");
+    uniform_color_yz = yz_context.getUniformLocation(program_yz, "color");
+    uniform_view_yz = yz_context.getUniformLocation(program_yz, "View");
+    yz_context.useProgram(program_yz);
+    yz_context.uniformMatrix4fv(uniform_view_yz, false, flatten(viewMatrix_yz));
+
+    xy_context.useProgram(program_xy);
     xy_context.viewport(0, 0, canvas_xy.width, canvas_xy.height);
+    xy_context.enable(xy_context.DEPTH_TEST);
+    attr_vertex_xy = xy_context.getAttribLocation(program_xy, "vertex");
+    uniform_props_xy = xy_context.getUniformLocation(program_xy, "props");
+    uniform_color_xy = xy_context.getUniformLocation(program_xy, "color");
+    uniform_view_xy = xy_context.getUniformLocation(program_xy, "View");
+    xy_context.useProgram(program_xy);
+    xy_context.uniformMatrix4fv(uniform_view_xy, false, flatten(viewMatrix_xy));
+
+
+    xyz_context.useProgram(program_xyz);    
     xyz_context.viewport(0, 0, canvas_xyz.width, canvas_xyz.height);
+    xyz_context.enable(xyz_context.DEPTH_TEST);
+    attr_vertex_xyz = xyz_context.getAttribLocation(program_xyz, "vertex");
+    uniform_props_xyz = xyz_context.getUniformLocation(program_xyz, "props");
+    uniform_color_xyz = xyz_context.getUniformLocation(program_xyz, "color");
+    uniform_view_xyz = xyz_context.getUniformLocation(program_xyz, "View");
+    xyz_context.useProgram(program_xyz);
+    xyz_context.uniformMatrix4fv(uniform_view_xyz, false, flatten(viewMatrix_xyz));
 
-    //Not yet including lines for getting vertex, props, and color or for enabling
+     //Not yet including lines for getting vertex, props, and color or for enabling
+
+    
 }
-
 // 3. Memory allocation and buffering
 // copied exactly from ICE5 because I don't know how it works
 
@@ -138,13 +218,23 @@ function allocateMemory() {
     xy_context.bindBuffer( xy_context.ARRAY_BUFFER, buffer_xy );
     xyz_context.bindBuffer( xyz_context.ARRAY_BUFFER, buffer_xyz );
 
+    xy_context.vertexAttribPointer( attr_vertex_xy, 3, xy_context.FLOAT, false, 0, 0 );
+    yz_context.vertexAttribPointer( attr_vertex_yz, 3, yz_context.FLOAT, false, 0, 0 );
+    xz_context.vertexAttribPointer( attr_vertex_xz, 3, xz_context.FLOAT, false, 0, 0 );
+    xyz_context.vertexAttribPointer( attr_vertex_xyz, 3, xyz_context.FLOAT, false, 0, 0 );
+
+
     //Missing two lines about the vertex attribute
+
+    xy_context.enableVertexAttribArray( attr_vertex_xy );
+    yz_context.enableVertexAttribArray( attr_vertex_yz );
+    xz_context.enableVertexAttribArray( attr_vertex_xz );
+    xyz_context.enableVertexAttribArray( attr_vertex_xyz );
 
     xz_context.bufferData( xz_context.ARRAY_BUFFER, flatten(vertex_data), xz_context.STATIC_DRAW );
     yz_context.bufferData( yz_context.ARRAY_BUFFER, flatten(vertex_data), yz_context.STATIC_DRAW );
     xy_context.bufferData( xy_context.ARRAY_BUFFER, flatten(vertex_data), xy_context.STATIC_DRAW );
     xyz_context.bufferData( xyz_context.ARRAY_BUFFER, flatten(vertex_data), xyz_context.STATIC_DRAW );
-
 }
 
 
@@ -152,8 +242,8 @@ function allocateMemory() {
 
 You may use the design framework included in ICE 5 and 6. Specifically, 
 
-create the data, 
-context configuration,
+create the data, - (Done) 
+context configuration, - 
 memory allocation and buffering,
 draw the model(s), and
 animation (i.e., draw at timed intervals), and 
@@ -161,3 +251,53 @@ complete the GLSL vertex shader program.
 You and your group will also be responsible for identifying and creating variables used by your coding solution, as well as selecting the appropriate data structures (such as an arrayLinks to an external site., an objectLinks to an external site., or an array of objects).
 
 Lastly, remember, every canvas will have its own context.*/
+
+
+//this is a helper function, so that you can call the repeated drawing code and make it simpler
+function draw_per_conteext(canvas_context, program, uniform_prop, uniform_color, xang, yang, zang){
+    canvas_context.useProgram(program);
+    // canvas_context.clearColor(0.05,0.05,0.06,1.0);
+    // canvas_context.clear(canvas_context.COLOR_BUFFER_BIT | canvas_context.DEPTH_BUFFER_BIT);
+    xang = xang * Math.PI/180.0;
+    yang = yang * Math.PI/180.0;
+    zang = zang * Math.PI/180.0;
+
+    let i = 0;
+    canvas_context.uniform4f(uniform_prop, xang, yang, zang, 1.75)
+    canvas_context.uniform4f(uniform_color, 0.60, 0.60, 0.60, 1.0);
+    for (j = 0; j < axis_index; j += 3) {
+        canvas_context.drawArrays(canvas_context.LINE_STRIP, j, 3);
+    }
+
+    canvas_context.uniform4f(uniform_color, 0.81, 0.81, 0.81, 1.0);
+    canvas_context.drawArrays(canvas_context.TRIANGLES, 0, axis_index);
+
+    i = axis_index
+
+    canvas_context.uniform4f(uniform_color, 1.0, 0.0, 0.0, 1.0);
+    canvas_context.drawArrays(canvas_context.LINES, i, 2);
+    i += 2;
+
+    canvas_context.uniform4f( uniform_color, 0.0, 1.0, 0.0, 1.0 );
+    canvas_context.drawArrays( canvas_context.LINES, i, 2);
+    i += 2;
+    
+  
+    canvas_context.uniform4f( uniform_color, 0.0, 0.0, 1.0, 1.0 );
+    canvas_context.drawArrays( canvas_context.LINES, i, 2);
+}
+
+
+
+
+function draw(){
+    draw_per_conteext(xy_context, program_xy, uniform_props_xy, uniform_color_xy, 0.0, 0.0, zang)
+    draw_per_conteext(xz_context, program_xz, uniform_props_xz, uniform_color_xz, 0.0, yang, 0.0)
+    draw_per_conteext(yz_context, program_yz, uniform_props_yz, uniform_color_yz, xang, 0.0, 0.0)
+    draw_per_conteext(xyz_context, program_xyz, uniform_props_xyz, uniform_color_xyz, xang, yang, zang)
+}
+
+createData();
+configure();
+allocateMemory();
+setInterval(draw, 100)
