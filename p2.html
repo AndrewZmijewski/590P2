@@ -66,6 +66,7 @@
     attribute vec4 vertex;
     uniform vec4 props; // [xang, yang, zang, scale]
     uniform mat4 View;
+    uniform float z_translation;
 
     void main() {
       float s_x = sin( props[0] );
@@ -96,8 +97,13 @@
                         0.0, props[3], 0.0, 0.0,
                         0.0, 0.0, props[3], 0.0,
                         0.0, 0.0, 0.0, 1.0 );
+
+      mat4 Tz = mat4( 1.0, 0.0, 0.0, 0.0,
+                        0.0, 1.0, 0.0, 0.0,
+                        0.0, 0.0, 1.0, 0.0,
+                        0.0, 0.0, z_translation, 1.0 );
       
-      mat4 Model = S * Rx * Ry * Rz;
+      mat4 Model = S * Rx * Ry * Tz * Rz;
       gl_Position = View * Model * vertex;
 
     }

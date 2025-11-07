@@ -28,7 +28,13 @@ let rot = 0;
 let axisRotation = null;
 let rot_inc = 10;
 let axis_index = 0;
-let vertex_data = []
+let propeller_index = 0;
+let vertex_data = [];
+
+let uniform_z_translation_xy = null;
+let uniform_z_translation_yz = null;
+let uniform_z_translation_xz = null;
+let uniform_z_translation_xyz = null;
 
 let canvas_xz = null; 
 let canvas_yz = null;
@@ -68,10 +74,10 @@ let uniform_color_xyz = null;
 
 let at = vec3(0.0,0.0,0.0);
 let up = vec3(0.0,0.5,0.0);
-let eye = vec3(0.0,0.0,-0.5);
+let eye = vec3(0.0,0.0,0.5);
 let viewMatrix_xyz = lookAt( eye, at, up );
 let viewMatrix_xy = lookAt(vec3(0.5,0.0,0.0), vec3(0.0,0.0,0.0),vec3(0.0,1.0,0.0))
-let viewMatrix_yz = lookAt(vec3(0.0,0.0,-0.5), vec3(0.0,0.0,0.0),vec3(0.0,1.0,0.0))
+let viewMatrix_yz = lookAt(vec3(0.0,0.0,0.5), vec3(0.0,0.0,0.0),vec3(0.0,1.0,0.0))
 let viewMatrix_xz = lookAt(vec3(0.0,-0.5,0.0), vec3(0.0,0.0,0.0),vec3(0.0,0.0,1.0))
 
 function startRotation(rotationFunc) {
@@ -128,11 +134,14 @@ function createData() {
         vertex_data[row++] = Vpl[Fpl[i][1]];
         vertex_data[row++] = Vpl[Fpl[i][2]];
     }
+    propeller_index = vertex_data.length
+
     for(let i = 0; i < Fpp.length; i++) {
         vertex_data[row++] = Vpp[Fpp[i][0]];
         vertex_data[row++] = Vpp[Fpp[i][1]];
         vertex_data[row++] = Vpp[Fpp[i][2]];
     }
+
     axis_index = vertex_data.length;
     for(let i = 0; i < A.length; i++) {
         vertex_data[row++] = A[i];
@@ -165,8 +174,11 @@ function configure() {
     uniform_props_xz = xz_context.getUniformLocation(program_xz, "props");
     uniform_color_xz = xz_context.getUniformLocation(program_xz, "color");
     uniform_view_xz = xz_context.getUniformLocation(program_xz, "View");
+    uniform_z_translation_xz = xz_context.getUniformLocation(program_xz, "z_translation");
     xz_context.useProgram(program_xz);
     xz_context.uniformMatrix4fv(uniform_view_xz, false, flatten(viewMatrix_xz));
+    
+
 
 
     yz_context.useProgram(program_yz);
@@ -176,8 +188,11 @@ function configure() {
     uniform_props_yz = yz_context.getUniformLocation(program_yz, "props");
     uniform_color_yz = yz_context.getUniformLocation(program_yz, "color");
     uniform_view_yz = yz_context.getUniformLocation(program_yz, "View");
+    uniform_z_translation_yz = yz_context.getUniformLocation(program_yz, "z_translation");
     yz_context.useProgram(program_yz);
     yz_context.uniformMatrix4fv(uniform_view_yz, false, flatten(viewMatrix_yz));
+    
+
 
     xy_context.useProgram(program_xy);
     xy_context.viewport(0, 0, canvas_xy.width, canvas_xy.height);
@@ -186,9 +201,10 @@ function configure() {
     uniform_props_xy = xy_context.getUniformLocation(program_xy, "props");
     uniform_color_xy = xy_context.getUniformLocation(program_xy, "color");
     uniform_view_xy = xy_context.getUniformLocation(program_xy, "View");
+    uniform_z_translation_xy = xy_context.getUniformLocation(program_xy, "z_translation");
     xy_context.useProgram(program_xy);
     xy_context.uniformMatrix4fv(uniform_view_xy, false, flatten(viewMatrix_xy));
-
+    
 
     xyz_context.useProgram(program_xyz);    
     xyz_context.viewport(0, 0, canvas_xyz.width, canvas_xyz.height);
@@ -197,6 +213,7 @@ function configure() {
     uniform_props_xyz = xyz_context.getUniformLocation(program_xyz, "props");
     uniform_color_xyz = xyz_context.getUniformLocation(program_xyz, "color");
     uniform_view_xyz = xyz_context.getUniformLocation(program_xyz, "View");
+    uniform_z_translation_xyz = xyz_context.getUniformLocation(program_xyz, "z_translation");
     xyz_context.useProgram(program_xyz);
     xyz_context.uniformMatrix4fv(uniform_view_xyz, false, flatten(viewMatrix_xyz));
 
@@ -254,23 +271,23 @@ Lastly, remember, every canvas will have its own context.*/
 
 
 //this is a helper function, so that you can call the repeated drawing code and make it simpler
-function draw_per_conteext(canvas_context, program, uniform_prop, uniform_color, xang, yang, zang){
+function draw_per_conteext(canvas_context, program, uniform_prop, uniform_color, xang, yang, zang, rot,uniform_z_translation){
     canvas_context.useProgram(program);
-    // canvas_context.clearColor(0.05,0.05,0.06,1.0);
-    // canvas_context.clear(canvas_context.COLOR_BUFFER_BIT | canvas_context.DEPTH_BUFFER_BIT);
     xang = xang * Math.PI/180.0;
     yang = yang * Math.PI/180.0;
     zang = zang * Math.PI/180.0;
+    rot = rot * Math.PI/180.0;
+
 
     let i = 0;
+    canvas_context.uniform1f(uniform_z_translation, 0.0)
     canvas_context.uniform4f(uniform_prop, xang, yang, zang, 1.75)
     canvas_context.uniform4f(uniform_color, 0.60, 0.60, 0.60, 1.0);
-    for (j = 0; j < axis_index; j += 3) {
+    for (j = 0; j < propeller_index; j += 3) {
         canvas_context.drawArrays(canvas_context.LINE_STRIP, j, 3);
     }
-
     canvas_context.uniform4f(uniform_color, 0.81, 0.81, 0.81, 1.0);
-    canvas_context.drawArrays(canvas_context.TRIANGLES, 0, axis_index);
+    canvas_context.drawArrays(canvas_context.TRIANGLES, 0, propeller_index);
 
     i = axis_index
 
@@ -285,16 +302,31 @@ function draw_per_conteext(canvas_context, program, uniform_prop, uniform_color,
   
     canvas_context.uniform4f( uniform_color, 0.0, 0.0, 1.0, 1.0 );
     canvas_context.drawArrays( canvas_context.LINES, i, 2);
+
+
+    canvas_context.uniform1f(uniform_z_translation, -0.375)
+    canvas_context.uniform4f(uniform_color, 0.40, 0.40, 0.40, 1.0);
+    canvas_context.uniform4f(uniform_prop, xang, yang, rot, 1.75)
+    for (j = propeller_index; j < axis_index; j += 3) {
+        canvas_context.drawArrays(canvas_context.LINE_STRIP, j, 3);
+    }
+    canvas_context.uniform4f(uniform_color, 0.72, 0.72, 0.72, 1.0);
+    canvas_context.drawArrays(canvas_context.TRIANGLES, propeller_index, axis_index);
+
+
+    
+
 }
 
 
 
 
 function draw(){
-    draw_per_conteext(xy_context, program_xy, uniform_props_xy, uniform_color_xy, 0.0, 0.0, zang)
-    draw_per_conteext(xz_context, program_xz, uniform_props_xz, uniform_color_xz, 0.0, yang, 0.0)
-    draw_per_conteext(yz_context, program_yz, uniform_props_yz, uniform_color_yz, xang, 0.0, 0.0)
-    draw_per_conteext(xyz_context, program_xyz, uniform_props_xyz, uniform_color_xyz, xang, yang, zang)
+    rot = (rot + rot_inc) % 360;
+    draw_per_conteext(xy_context, program_xy, uniform_props_xy, uniform_color_xy, 0.0, 0.0, zang, rot, uniform_z_translation_xy)
+    draw_per_conteext(xz_context, program_xz, uniform_props_xz, uniform_color_xz, 0.0, yang, 0.0, rot,  uniform_z_translation_xz)
+    draw_per_conteext(yz_context, program_yz, uniform_props_yz, uniform_color_yz, xang, 0.0, 0.0, rot,  uniform_z_translation_yz)
+    draw_per_conteext(xyz_context, program_xyz, uniform_props_xyz, uniform_color_xyz, xang, yang, zang, rot,  uniform_z_translation_xyz)
 }
 
 createData();
